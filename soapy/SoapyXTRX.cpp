@@ -1159,6 +1159,8 @@ int SoapyXTRX::activateStream(
 		return 0;
 	}
 
+	bool activated = false;
+
 	if ((stream == STREAM_RX) || _sync_rx_tx_streams_act) {
 		if (_rx_stream != SS_ALOCATED)
 			throw std::runtime_error("SoapyXTRX::activateStream() - RX stream isn't allocated!");
@@ -1175,7 +1177,10 @@ int SoapyXTRX::activateStream(
 		}
 		_stream_params.rx.paketsize = (uint16_t)numElems;
 		_stream_params.dir = XTRX_RX;
+		
+		activated = true;
 	}
+
 	if ((stream == STREAM_TX) || _sync_rx_tx_streams_act) {
 		if (_tx_stream != SS_ALOCATED)
 			throw std::runtime_error("SoapyXTRX::activateStream() - TX stream isn't allocated!");
@@ -1192,7 +1197,11 @@ int SoapyXTRX::activateStream(
 		} else {
 			_tx_internal = 32768;
 		}
-	} else {
+		
+		activated = true;
+	}
+	
+	if (!activated) {
 		throw std::runtime_error("SoapyXTRX::activateStream() - incorrect stream");
 	}
 
