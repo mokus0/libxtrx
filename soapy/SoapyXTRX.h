@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <memory>
+#include <stdarg.h>
 
 #include "../xtrx_api.h"
 
@@ -34,7 +35,15 @@ protected:
 class SoapyXTRX : public SoapySDR::Device
 {
 public:
-	static void xtrx_logfunc(int sevirity, const char* message);
+    static void xtrx_logfunc(
+        int level,
+        const struct tm* stm,
+        int nsec,
+        char const subsystem[4],
+        char const* function,
+        char const* file, int lineno,
+        char const* fmt,
+        va_list fmt_args);
 
     SoapyXTRX(const SoapySDR::Kwargs &args);
 

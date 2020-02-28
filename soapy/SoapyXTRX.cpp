@@ -9,14 +9,60 @@
 #include <algorithm>
 #include <cmath>
 #include <string.h>
+#include <xtrxll_log.h>
 
+static SoapySDR::LogLevel soapy_log_level(enum xtrxll_loglevel xtrx_level) {
+	switch(xtrx_level) {
+		case XTRXLL_ERROR: return SOAPY_SDR_ERROR;
+		case XTRXLL_WARNING: return SOAPY_SDR_WARNING;
 
-void SoapyXTRX::xtrx_logfunc(int sevirity, const char* message)
+		default:
+		case XTRXLL_INFO: return SOAPY_SDR_INFO;
+
+		case XTRXLL_INFO_LMS: return SOAPY_SDR_INFO;
+		case XTRXLL_DEBUG: return SOAPY_SDR_DEBUG;
+		case XTRXLL_DEBUG_REGS: return SOAPY_SDR_DEBUG;
+		case XTRXLL_PARANOIC: return SOAPY_SDR_TRACE;
+	}
+}
+
+void SoapyXTRX::xtrx_logfunc(
+	int level,
+	const struct tm* stm,
+	int nsec,
+	char const subsystem[4],
+	char const* function,
+	char const* file, int lineno,
+	char const* fmt,
+	va_list fmt_args)
 {
-	// TODO parse sevirity
-	(void)sevirity;
+	(void)file;
 
-	SoapySDR::log(SOAPY_SDR_INFO, message);
+	std::stringstream message;
+
+	std::string cpp_subsystem(subsystem, 4);
+	message << '[' << cpp_subsystem << ']';
+
+	char buf[1024];
+	size_t stsz = strftime(buf, sizeof(buf), "%H:%M:%S.", stm);
+	if (snprintf(buf + stsz - 1, sizeof(buf) - stsz, ".%06d",
+				  (int)(nsec/1000)) > 0) {
+		message << '[' << buf << ']';
+	}
+
+	message << ' ';
+
+	if (level > XTRXLL_DEBUG) {
+		message << function << ':' << lineno << ' ';
+	}
+
+	size_t msgsz = vsnprintf(buf, sizeof(buf), fmt, fmt_args);
+	if (msgsz > 0) {
+		if (buf[msgsz - 1] == '\n') msgsz--;
+		message << std::string(buf, msgsz);
+	}
+
+	SoapySDR::log(soapy_log_level((enum xtrxll_loglevel) level), message.str());
 }
 
 std::map<std::string, std::weak_ptr<XTRXHandle>> XTRXHandle::s_created;
@@ -52,6 +98,8 @@ XTRXHandle::~XTRXHandle()
 SoapyXTRX::SoapyXTRX(const SoapySDR::Kwargs &args)
 {
 	SoapySDR::logf(SOAPY_SDR_INFO, "Make connection: '%s'", args.count("dev") ? args.at("dev").c_str() : "*");
+
+	xtrx_log_setfunc(&SoapyXTRX::xtrx_logfunc);
 
 	unsigned loglevel = 3;
 #ifdef __linux
